@@ -1,0 +1,56 @@
+{
+  "name": "igiwatch",
+  "author": "iginoc",
+  "version": "1.0.0",
+  "keywords": [
+    "pebble-app"
+  ],
+  "private": true,
+  "dependencies": {
+    "pebble-fctx": "^1.6.4"
+  },
+  "pebble": {
+    "displayName": "igiwatch",
+    "uuid": "32004e25-f39f-11f0-98c3-24b6fdfdf126",
+    "sdkVersion": "3",
+    "enableMultiJS": true,
+    "targetPlatforms": [
+      "aplite",
+      "basalt",
+      "chalk",
+      "diorite",
+      "emery",
+      "flint"
+    ],
+    "watchapp": {
+      "watchface": true,
+      "iconImage": "MENU_ICON"
+    },
+    "messageKeys": [
+      "dummy"
+    ],
+    "resources": {
+      "media": [
+        {
+          "type": "bitmap",
+          "name": "MENU_ICON",
+          "file": "images/igitimer.png",
+          "menuIcon": true
+        },
+        {
+          "type": "raw",
+          "name": "AVENIR_NEXT_DEMI_BOLD",
+          "file": "fonts/AvenirNextDemiBold.ffont"
+        },
+        {
+          "type": "raw",
+          "name": "LECO1976_REGULAR",
+          "file": "fonts/LECO1976-Regular.ffont"
+        }
+      ]
+    }
+  },
+  "devDependencies": {
+    "pebble-fctx-compiler": "^1.2.0"
+  }
+}

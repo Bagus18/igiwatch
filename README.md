@@ -1,26 +1,22 @@
-# IgiTimer
+# IgiWatch
 
-A simple and functional timer for Pebble smartwatches, featuring a high-contrast interface and quick controls.
+A dynamic and minimalist watchface for Pebble smartwatches that adapts to your viewing angle using the accelerometer.
 
-## Button Functions
+## Features
 
-### UP Button
-* **Single Press**: Adds **1 minute** to the timer.
-* **Long Press**: Adds **5 minutes** to the timer.
-* *Note: Incrementing resets seconds to zero.*
+*   **Smart Orientation**: The time display rotates to remain readable whether you are holding your arm upright, tilted left, or tilted right.
+*   **Interactive Control**: Uses the accelerometer on-demand to save battery.
+*   **Clean Design**: High-contrast typography using Avenir Next.
 
-### SELECT Button (Center)
-* **Single Press**: **PAUSES** or **RESUMES** the countdown.
-* **Long Press**: **RESTARTS** the timer using the last set total duration.
+## How to Use
 
-### DOWN Button
-* **Single Press**: Subtracts **1 minute** from the timer.
-* **Long Press**: Subtracts **5 minutes** from the timer.
-* *Note: If the time reaches zero, the timer stops.*
+1.  **Standard View**: By default, the watchface displays the time in a standard vertical orientation.
+2.  **Activate Rotation**: **Double tap** the watch (or shake your wrist twice quickly) to enter calibration mode.
+3.  **Tilt**: A small indicator dot will appear. Tilt your wrist left or right to adjust the orientation.
+4.  **Read**: After 5 seconds, the dot disappears and the time is displayed in the new orientation.
 
-## User Interface
-* **Display**: Minutes in the top half, Seconds in the bottom half.
-* **Progress Bar**: A vertical bar on the left (green on black background) empties as time passes.
-* **Status**:
-  - When paused, a pause icon appears in the center.
-  - When time expires, the watch vibrates.
+## Technical Details
+
+*   Built with the Pebble C SDK.
+*   Uses `pebble-fctx` for advanced font rendering.
+*   Efficient accelerometer usage (only active for 5 seconds after interaction).

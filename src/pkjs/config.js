@@ -1,26 +1,26 @@
 module.exports = [
   {
     "type": "heading",
-    "defaultValue": "Configurazione IgiWatch"
+    "defaultValue": "IgiWatch Configuration"
   },
   {
     "type": "section",
     "items": [
       {
         "type": "heading",
-        "defaultValue": "Colori"
+        "defaultValue": "Colors"
       },
       {
         "type": "color",
         "messageKey": "BackgroundColor",
         "defaultValue": "0x000000",
-        "label": "Sfondo"
+        "label": "Background"
       },
       {
         "type": "color",
         "messageKey": "TextColor",
         "defaultValue": "0xFFFFFF",
-        "label": "Testo"
+        "label": "Text"
       }
     ]
   },
@@ -34,7 +34,7 @@ module.exports = [
       {
         "type": "radiogroup",
         "messageKey": "FontChoice",
-        "label": "Scegli il font",
+        "label": "Choose Font",
         "defaultValue": "0",
         "options": [
           { "label": "Avenir Next", "value": "0" },
@@ -49,24 +49,46 @@ module.exports = [
     "items": [
       {
         "type": "heading",
-        "defaultValue": "Orientamento"
+        "defaultValue": "Orientation"
       },
       {
         "type": "radiogroup",
         "messageKey": "ScreenOrientation",
-        "label": "Scegli l'orientamento",
+        "label": "Choose Orientation",
         "defaultValue": "0",
         "options": [
-          { "label": "Automatico (con doppio tap)", "value": "0" },
-          { "label": "Sempre Verticale", "value": "1" },
-          { "label": "Sempre Orizzontale (sinistra)", "value": "2" },
-          { "label": "Sempre Orizzontale (destra)", "value": "3" }
+          { "label": "Automatic (Double Tap)", "value": "0" },
+          { "label": "Always Portrait", "value": "1" },
+          { "label": "Always Landscape (Left)", "value": "2" },
+          { "label": "Always Landscape (Right)", "value": "3" }
+        ]
+      }
+    ]
+  },
+  {
+    "type": "section",
+    "items": [
+      {
+        "type": "heading",
+        "defaultValue": "Date Language"
+      },
+      {
+        "type": "radiogroup",
+        "messageKey": "DateLanguage",
+        "label": "Choose Language (Portrait Mode Only)",
+        "defaultValue": "it_IT",
+        "options": [
+          { "label": "Italian", "value": "it_IT" },
+          { "label": "English", "value": "en_US" },
+          { "label": "French", "value": "fr_FR" },
+          { "label": "German", "value": "de_DE" },
+          { "label": "Spanish", "value": "es_ES" }
         ]
       }
     ]
   },
   {
     "type": "submit",
-    "defaultValue": "Salva"
+    "defaultValue": "Save"
   }
 ];

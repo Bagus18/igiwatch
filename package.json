@@ -30,7 +30,8 @@
       "BackgroundColor",
       "TextColor",
       "FontChoice",
-      "ScreenOrientation"
+      "ScreenOrientation",
+      "DateLanguage"
     ],
     "resources": {
       "media": [

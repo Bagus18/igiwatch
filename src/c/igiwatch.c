@@ -17,6 +17,7 @@ static GColor s_bg_color;
 static GColor s_text_color;
 static int s_font_choice;
 static int s_orientation_choice;
+static char s_date_locale[8];
 
 static AppTimer *s_fluid_rotation_timer;
 static AppTimer *s_double_tap_timer = NULL;
@@ -28,6 +29,25 @@ static bool s_is_moving = false;
 static char s_hour_str[3];
 static char s_minute_str[3];
 static char s_time_str[6];
+static char s_dow_str[8];
+static char s_day_str[4];
+static char s_mon_str[8];
+static char s_full_date_str[20];
+
+static const char* DAYS_IT[] = {"Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"};
+static const char* MONTHS_IT[] = {"Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"};
+
+static const char* DAYS_EN[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+static const char* MONTHS_EN[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+
+static const char* DAYS_FR[] = {"Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"};
+static const char* MONTHS_FR[] = {"Jan", "Fév", "Mar", "Avr", "Mai", "Jui", "Jul", "Aoû", "Sep", "Oct", "Nov", "Déc"};
+
+static const char* DAYS_DE[] = {"So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"};
+static const char* MONTHS_DE[] = {"Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"};
+
+static const char* DAYS_ES[] = {"Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"};
+static const char* MONTHS_ES[] = {"Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"};
 
 static void update_time() {
   time_t temp = time(NULL);
@@ -41,6 +61,29 @@ static void update_time() {
   strftime(s_minute_str, sizeof(s_minute_str), "%M", tick_time);
 
   snprintf(s_time_str, sizeof(s_time_str), "%s:%s", s_hour_str, s_minute_str);
+
+  strftime(s_dow_str, sizeof(s_dow_str), "%a", tick_time);
+  snprintf(s_day_str, sizeof(s_day_str), "%d", tick_time->tm_mday);
+  strftime(s_mon_str, sizeof(s_mon_str), "%m", tick_time);
+  
+  const char** days = DAYS_IT;
+  const char** months = MONTHS_IT;
+
+  if (strncmp(s_date_locale, "en", 2) == 0) {
+    days = DAYS_EN;
+    months = MONTHS_EN;
+  } else if (strncmp(s_date_locale, "fr", 2) == 0) {
+    days = DAYS_FR;
+    months = MONTHS_FR;
+  } else if (strncmp(s_date_locale, "de", 2) == 0) {
+    days = DAYS_DE;
+    months = MONTHS_DE;
+  } else if (strncmp(s_date_locale, "es", 2) == 0) {
+    days = DAYS_ES;
+    months = MONTHS_ES;
+  }
+
+  snprintf(s_full_date_str, sizeof(s_full_date_str), "%s %d %s", days[tick_time->tm_wday], tick_time->tm_mday, months[tick_time->tm_mon]);
 
   layer_mark_dirty(s_canvas_layer);
 }
@@ -161,7 +204,7 @@ static void layer_update_proc(Layer *layer, GContext *ctx) {
         text_rotation = 0;
         text_pos.x = INT_TO_FIXED(0);
         text_pos.y = INT_TO_FIXED(0);
-        font_size = 112;
+        font_size = 96;
     }
 
     if (!s_time_font) {
@@ -209,6 +252,51 @@ static void layer_update_proc(Layer *layer, GContext *ctx) {
     fctx_draw_string(&fctx, s_minute_str, s_time_font, GTextAlignmentLeft, FTextAnchorTop);
     fctx_end_fill(&fctx);
 
+    // --- Draw Date using the chosen font ---
+    int date_font_size;
+    if (s_current_angle == TRIG_MAX_ANGLE / 2) { // Portrait
+        // Use system font for portrait
+        graphics_context_set_text_color(ctx, s_text_color);
+        GFont sys_font = fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD);
+        GRect date_bounds = GRect(0, bounds.size.h - 30, bounds.size.w - 5, 30);
+        graphics_draw_text(ctx, s_full_date_str, sys_font, date_bounds, GTextOverflowModeWordWrap, GTextAlignmentRight, NULL);
+    } else { // Landscape
+        date_font_size = 32;
+        FPoint date_pos;
+        if (s_current_angle == TRIG_MAX_ANGLE / 4) { // Right Landscape
+            // Visual bottom-right is physical top-right
+            date_pos.x = INT_TO_FIXED(bounds.size.w - 40);
+            date_pos.y = INT_TO_FIXED(40);
+        } else { // Left Landscape
+            // Visual bottom-right is physical bottom-left
+            date_pos.x = INT_TO_FIXED(40);
+            date_pos.y = INT_TO_FIXED(bounds.size.h - 40);
+        }
+        fctx_set_text_em_height(&fctx, s_time_font, date_font_size);
+
+        // Calculate offset for stacking day and month
+        int date_line_height = date_font_size;
+        int32_t date_dy = (cos_lookup(text_rotation) * date_line_height) / TRIG_MAX_RATIO;
+        int32_t date_dx = (-sin_lookup(text_rotation) * date_line_height) / TRIG_MAX_RATIO;
+
+        FPoint line_pos = date_pos;
+        line_pos.x -= INT_TO_FIXED(date_dx) / 2;
+        line_pos.y -= INT_TO_FIXED(date_dy) / 2;
+
+        fctx_set_offset(&fctx, line_pos);
+        fctx_begin_fill(&fctx);
+        fctx_draw_string(&fctx, s_day_str, s_time_font, GTextAlignmentCenter, FTextAnchorMiddle);
+        fctx_end_fill(&fctx);
+
+        line_pos.x += INT_TO_FIXED(date_dx);
+        line_pos.y += INT_TO_FIXED(date_dy);
+
+        fctx_set_offset(&fctx, line_pos);
+        fctx_begin_fill(&fctx);
+        fctx_draw_string(&fctx, s_mon_str, s_time_font, GTextAlignmentCenter, FTextAnchorMiddle);
+        fctx_end_fill(&fctx);
+    }
+
     fctx_deinit_context(&fctx);
   }
 }
@@ -237,7 +325,7 @@ static void status_update_proc(Layer *layer, GContext *ctx) {
   graphics_context_set_fill_color(ctx, bar_color);
 
   GRect battery_bar_rect;
-  int bar_x_pos;
+  GRect battery_border_rect;
 
   // --- Bluetooth Icon & Bar Positioning ---
   graphics_context_set_text_color(ctx, s_text_color); // Set text color for BT icon
@@ -246,6 +334,7 @@ static void status_update_proc(Layer *layer, GContext *ctx) {
     // Visual Right is Physical Bottom.
     // Bar at Physical Bottom.
     battery_bar_rect = GRect(0, bounds.size.h - 6, bar_len_h, 6);
+    battery_border_rect = GRect(0, bounds.size.h - 6, bounds.size.w, 6);
     if (!s_bt_connected) {
       graphics_draw_text(ctx, "BT", fonts_get_system_font(FONT_KEY_GOTHIC_14), GRect(0, bounds.size.h - 20, 20, 14), GTextOverflowModeWordWrap, GTextAlignmentLeft, NULL);
     }
@@ -253,19 +342,25 @@ static void status_update_proc(Layer *layer, GContext *ctx) {
     // Visual Right is Physical Top.
     // Bar at Physical Top.
     battery_bar_rect = GRect(bounds.size.w - bar_len_h, 0, bar_len_h, 6);
+    battery_border_rect = GRect(0, 0, bounds.size.w, 6);
     if (!s_bt_connected) {
       graphics_draw_text(ctx, "BT", fonts_get_system_font(FONT_KEY_GOTHIC_14), GRect(bounds.size.w - 20, 6, 20, 14), GTextOverflowModeWordWrap, GTextAlignmentRight, NULL);
     }
   } else { // Portrait
     // Visual Right is Physical Right.
     battery_bar_rect = GRect(bounds.size.w - 6, bounds.size.h - bar_len_v, 6, bar_len_v);
+    battery_border_rect = GRect(bounds.size.w - 6, 0, 6, bounds.size.h);
     if (!s_bt_connected) {
       graphics_draw_text(ctx, "BT", fonts_get_system_font(FONT_KEY_GOTHIC_14), GRect(bounds.size.w - 25, 0, 20, 14), GTextOverflowModeWordWrap, GTextAlignmentRight, NULL);
     }
   }
 
   // Draw the battery bar
+  graphics_context_set_fill_color(ctx, bar_color);
   graphics_fill_rect(ctx, battery_bar_rect, 0, GCornerNone);
+  // Add a black border for better visibility
+  graphics_context_set_stroke_color(ctx, GColorBlack);
+  graphics_draw_rect(ctx, battery_border_rect);
 }
 
 static void battery_callback(BatteryChargeState charge) {
@@ -324,6 +419,13 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
     // If automatic (0), we don't change the current angle until a tap
 
     layer_mark_dirty(s_status_layer);
+  }
+
+  Tuple *language_t = dict_find(iter, MESSAGE_KEY_DateLanguage);
+  if (language_t) {
+    strncpy(s_date_locale, language_t->value->cstring, sizeof(s_date_locale));
+    persist_write_string(MESSAGE_KEY_DateLanguage, s_date_locale);
+    update_time();
   }
 
   layer_mark_dirty(s_canvas_layer);
@@ -424,6 +526,13 @@ static void init(void) {
     s_orientation_choice = persist_read_int(MESSAGE_KEY_ScreenOrientation);
   } else {
     s_orientation_choice = 0; // 0: Automatic
+  }
+
+  // Load date language or set default
+  if (persist_exists(MESSAGE_KEY_DateLanguage)) {
+    persist_read_string(MESSAGE_KEY_DateLanguage, s_date_locale, sizeof(s_date_locale));
+  } else {
+    strcpy(s_date_locale, "it_IT");
   }
 
   if (s_orientation_choice == 1) { // Portrait

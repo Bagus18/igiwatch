@@ -10,8 +10,13 @@
 // Clock state
 static Layer *s_canvas_layer;
 static FFont *s_time_font;
+static Layer *s_status_layer;
+static int s_battery_level;
+static bool s_bt_connected;
 static GColor s_bg_color;
 static GColor s_text_color;
+static int s_font_choice;
+static int s_orientation_choice;
 
 static AppTimer *s_fluid_rotation_timer;
 static AppTimer *s_double_tap_timer = NULL;
@@ -52,6 +57,7 @@ static void fluid_rotation_timer_callback(void *data) {
 
   s_is_moving = false;
   layer_mark_dirty(s_canvas_layer);
+  layer_mark_dirty(s_status_layer);
 
 }
 
@@ -76,9 +82,14 @@ static void accel_data_handler(AccelData *data, uint32_t num_samples) {
 
   // Redraw the layer
   layer_mark_dirty(s_canvas_layer);
+  layer_mark_dirty(s_status_layer);
 }
 
 static void tap_handler(AccelAxisType axis, int32_t direction) {
+  if (s_orientation_choice != 0) {
+    return; // Fixed orientation, ignore taps
+  }
+
   s_tap_count++;
   if (s_tap_count == 1) {
     s_double_tap_timer = app_timer_register(1000, double_tap_timer_callback, NULL);
@@ -93,6 +104,7 @@ static void tap_handler(AccelAxisType axis, int32_t direction) {
 
   s_is_moving = true;
   layer_mark_dirty(s_canvas_layer);
+  layer_mark_dirty(s_status_layer);
 
   if (s_fluid_rotation_timer) {
     app_timer_reschedule(s_fluid_rotation_timer, 5000); // 5 seconds
@@ -138,22 +150,34 @@ static void layer_update_proc(Layer *layer, GContext *ctx) {
     if (s_current_angle == TRIG_MAX_ANGLE / 4) { // 90 deg
         text_rotation = TRIG_MAX_ANGLE * 3 / 4; // 270 deg
         text_pos.x = INT_TO_FIXED(0);
-        text_pos.y = INT_TO_FIXED(bounds.size.h);
+        text_pos.y = INT_TO_FIXED(bounds.size.h + 2);
         font_size = 96;
     } else if (s_current_angle == TRIG_MAX_ANGLE * 3 / 4) { // 270 deg
         text_rotation = TRIG_MAX_ANGLE / 4; // 90 deg
         text_pos.x = INT_TO_FIXED(bounds.size.w);
-        text_pos.y = INT_TO_FIXED(0);
+        text_pos.y = INT_TO_FIXED(2);
         font_size = 96;
     } else {
         text_rotation = 0;
         text_pos.x = INT_TO_FIXED(0);
         text_pos.y = INT_TO_FIXED(0);
-        font_size = 114;
+        font_size = 112;
     }
 
     if (!s_time_font) {
-        s_time_font = ffont_create_from_resource(RESOURCE_ID_AVENIR_NEXT_DEMI_BOLD);
+        uint32_t font_res_id;
+        switch (s_font_choice) {
+          case 1:
+            font_res_id = RESOURCE_ID_LECO1976_REGULAR;
+            break;
+          case 2:
+            font_res_id = RESOURCE_ID_AVENIR_NEXT_REGULAR;
+            break;
+          default: // case 0
+            font_res_id = RESOURCE_ID_AVENIR_NEXT_DEMI_BOLD;
+            break;
+        }
+        s_time_font = ffont_create_from_resource(font_res_id);
     }
 
     FContext fctx;
@@ -171,6 +195,10 @@ static void layer_update_proc(Layer *layer, GContext *ctx) {
 
     // Reduce the line height to bring minutes closer to the hour
     int line_height = font_size * 3 / 4;
+    if (s_current_angle != TRIG_MAX_ANGLE / 2) {
+      line_height += 2;
+    }
+
     int32_t dy = (cos_lookup(text_rotation) * line_height) / TRIG_MAX_RATIO;
     int32_t dx = (-sin_lookup(text_rotation) * line_height) / TRIG_MAX_RATIO;
     text_pos.x += INT_TO_FIXED(dx);
@@ -182,6 +210,76 @@ static void layer_update_proc(Layer *layer, GContext *ctx) {
     fctx_end_fill(&fctx);
 
     fctx_deinit_context(&fctx);
+  }
+}
+
+static void status_update_proc(Layer *layer, GContext *ctx) {
+  GRect bounds = layer_get_bounds(layer);
+
+  // Don't draw status icons while the orientation is being changed
+  if (s_is_moving) {
+    return;
+  }
+
+  // --- Battery Bar ---
+  int bar_len_h = (int)(((float)s_battery_level / 100.0F) * bounds.size.w);
+  int bar_len_v = (int)(((float)s_battery_level / 100.0F) * bounds.size.h);
+
+  GColor bar_color;
+  if (s_battery_level > 50) {
+    bar_color = GColorJaegerGreen;
+  } else if (s_battery_level > 20) {
+    bar_color = GColorChromeYellow;
+  } else {
+    bar_color = GColorRed;
+  }
+
+  graphics_context_set_fill_color(ctx, bar_color);
+
+  GRect battery_bar_rect;
+  int bar_x_pos;
+
+  // --- Bluetooth Icon & Bar Positioning ---
+  graphics_context_set_text_color(ctx, s_text_color); // Set text color for BT icon
+
+  if (s_current_angle == TRIG_MAX_ANGLE * 3 / 4) { // Left landscape
+    // Visual Right is Physical Bottom.
+    // Bar at Physical Bottom.
+    battery_bar_rect = GRect(0, bounds.size.h - 6, bar_len_h, 6);
+    if (!s_bt_connected) {
+      graphics_draw_text(ctx, "BT", fonts_get_system_font(FONT_KEY_GOTHIC_14), GRect(0, bounds.size.h - 20, 20, 14), GTextOverflowModeWordWrap, GTextAlignmentLeft, NULL);
+    }
+  } else if (s_current_angle == TRIG_MAX_ANGLE / 4) { // Right landscape
+    // Visual Right is Physical Top.
+    // Bar at Physical Top.
+    battery_bar_rect = GRect(bounds.size.w - bar_len_h, 0, bar_len_h, 6);
+    if (!s_bt_connected) {
+      graphics_draw_text(ctx, "BT", fonts_get_system_font(FONT_KEY_GOTHIC_14), GRect(bounds.size.w - 20, 6, 20, 14), GTextOverflowModeWordWrap, GTextAlignmentRight, NULL);
+    }
+  } else { // Portrait
+    // Visual Right is Physical Right.
+    battery_bar_rect = GRect(bounds.size.w - 6, bounds.size.h - bar_len_v, 6, bar_len_v);
+    if (!s_bt_connected) {
+      graphics_draw_text(ctx, "BT", fonts_get_system_font(FONT_KEY_GOTHIC_14), GRect(bounds.size.w - 25, 0, 20, 14), GTextOverflowModeWordWrap, GTextAlignmentRight, NULL);
+    }
+  }
+
+  // Draw the battery bar
+  graphics_fill_rect(ctx, battery_bar_rect, 0, GCornerNone);
+}
+
+static void battery_callback(BatteryChargeState charge) {
+  s_battery_level = charge.charge_percent;
+  layer_mark_dirty(s_status_layer);
+}
+
+static void bluetooth_callback(bool connected) {
+  s_bt_connected = connected;
+  layer_mark_dirty(s_status_layer);
+
+  if(!connected) {
+    // Vibrate for disconnection
+    vibes_double_pulse();
   }
 }
 
@@ -198,6 +296,36 @@ static void inbox_received_handler(DictionaryIterator *iter, void *context) {
     persist_write_int(MESSAGE_KEY_TextColor, text_color_t->value->int32);
   }
 
+  Tuple *font_choice_t = dict_find(iter, MESSAGE_KEY_FontChoice);
+  if (font_choice_t) {
+    s_font_choice = atoi(font_choice_t->value->cstring);
+    persist_write_int(MESSAGE_KEY_FontChoice, s_font_choice);
+
+    // Unload old font, new one will be loaded in update_proc
+    if (s_time_font) {
+      ffont_destroy(s_time_font);
+      s_time_font = NULL;
+    }
+  }
+
+  Tuple *orientation_t = dict_find(iter, MESSAGE_KEY_ScreenOrientation);
+  if (orientation_t) {
+    s_orientation_choice = atoi(orientation_t->value->cstring);
+    persist_write_int(MESSAGE_KEY_ScreenOrientation, s_orientation_choice);
+
+    // Apply the new orientation immediately, disable tap handler if fixed
+    if (s_orientation_choice == 1) { // Portrait
+      s_current_angle = TRIG_MAX_ANGLE / 2;
+    } else if (s_orientation_choice == 2) { // Landscape Left
+      s_current_angle = TRIG_MAX_ANGLE * 3 / 4;
+    } else if (s_orientation_choice == 3) { // Landscape Right
+      s_current_angle = TRIG_MAX_ANGLE / 4;
+    }
+    // If automatic (0), we don't change the current angle until a tap
+
+    layer_mark_dirty(s_status_layer);
+  }
+
   layer_mark_dirty(s_canvas_layer);
 }
 
@@ -211,14 +339,30 @@ void Clock_init(Window *window) {
   layer_set_update_proc(s_canvas_layer, layer_update_proc);
   layer_add_child(window_layer, s_canvas_layer);
 
+  // Create status layer
+  s_status_layer = layer_create(bounds);
+  layer_set_update_proc(s_status_layer, status_update_proc);
+  layer_add_child(window_layer, s_status_layer);
+
   // Subscribe to tick timer service
   tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
   accel_tap_service_subscribe(tap_handler);
+
+  // Subscribe to services
+  battery_state_service_subscribe(battery_callback);
+  bluetooth_connection_service_subscribe(bluetooth_callback);
+
+  // Get initial state
+  battery_callback(battery_state_service_peek());
+  bluetooth_callback(connection_service_peek_pebble_app_connection());
+
   update_time();
 }
 
 // Deinitialize clock
 void Clock_deinit(void) {
+  battery_state_service_unsubscribe();
+  bluetooth_connection_service_unsubscribe();
   accel_tap_service_unsubscribe();
   tick_timer_service_unsubscribe();
 
@@ -241,6 +385,11 @@ void Clock_deinit(void) {
   if (s_canvas_layer) {
     layer_destroy(s_canvas_layer);
   }
+
+  if (s_status_layer) {
+    layer_destroy(s_status_layer);
+    s_status_layer = NULL;
+  }
 }
 
 static Window *s_main_window;
@@ -261,6 +410,28 @@ static void init(void) {
     s_text_color = GColorFromHEX(persist_read_int(MESSAGE_KEY_TextColor));
   } else {
     s_text_color = GColorWhite;
+  }
+
+  // Load font choice or set default
+  if (persist_exists(MESSAGE_KEY_FontChoice)) {
+    s_font_choice = persist_read_int(MESSAGE_KEY_FontChoice);
+  } else {
+    s_font_choice = 0; // 0: Avenir, 1: Leco
+  }
+
+  // Load orientation choice or set default
+  if (persist_exists(MESSAGE_KEY_ScreenOrientation)) {
+    s_orientation_choice = persist_read_int(MESSAGE_KEY_ScreenOrientation);
+  } else {
+    s_orientation_choice = 0; // 0: Automatic
+  }
+
+  if (s_orientation_choice == 1) { // Portrait
+    s_current_angle = TRIG_MAX_ANGLE / 2;
+  } else if (s_orientation_choice == 2) { // Landscape Left
+    s_current_angle = TRIG_MAX_ANGLE * 3 / 4;
+  } else if (s_orientation_choice == 3) { // Landscape Right
+    s_current_angle = TRIG_MAX_ANGLE / 4;
   }
 
   app_message_register_inbox_received(inbox_received_handler);

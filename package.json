@@ -28,7 +28,9 @@
     },
     "messageKeys": [
       "BackgroundColor",
-      "TextColor"
+      "TextColor",
+      "FontChoice",
+      "ScreenOrientation"
     ],
     "resources": {
       "media": [
@@ -47,6 +49,11 @@
           "type": "raw",
           "name": "LECO1976_REGULAR",
           "file": "fonts/LECO1976-Regular.ffont"
+        },
+        {
+          "type": "raw",
+          "name": "AVENIR_NEXT_REGULAR",
+          "file": "fonts/AvenirNextRegular.ffont"
         }
       ]
     }

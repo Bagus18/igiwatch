@@ -10,7 +10,8 @@
 // Clock state
 static Layer *s_canvas_layer;
 static FFont *s_time_font;
-static bool s_inverted_colors = false;
+static GColor s_bg_color;
+static GColor s_text_color;
 
 static AppTimer *s_fluid_rotation_timer;
 static AppTimer *s_double_tap_timer = NULL;
@@ -107,20 +108,14 @@ static void tap_handler(AccelAxisType axis, int32_t direction) {
 static void layer_update_proc(Layer *layer, GContext *ctx) {
   GRect bounds = layer_get_bounds(layer);
 
-  GColor bg_color;
-  GColor text_color;
-
-  bg_color = s_inverted_colors ? GColorBlack : GColorWhite;
-  text_color = s_inverted_colors ? GColorWhite : GColorBlack;
-
   // Draw a background rectangle
-  graphics_context_set_fill_color(ctx, bg_color);
+  graphics_context_set_fill_color(ctx, s_bg_color);
   graphics_fill_rect(ctx, bounds, 0, GCornerNone);
 
   GPoint center = grect_center_point(&bounds);
 
-  graphics_context_set_fill_color(ctx, text_color);
-  graphics_context_set_stroke_color(ctx, text_color);
+  graphics_context_set_fill_color(ctx, s_text_color);
+  graphics_context_set_stroke_color(ctx, s_text_color);
 
   // Draw a small ball attached to the big one
   // The big circle has a radius of 40, the small one 10.
@@ -163,7 +158,7 @@ static void layer_update_proc(Layer *layer, GContext *ctx) {
 
     FContext fctx;
     fctx_init_context(&fctx, ctx);
-    fctx_set_fill_color(&fctx, text_color);
+    fctx_set_fill_color(&fctx, s_text_color);
 
     fctx_set_rotation(&fctx, text_rotation);
     fctx_set_offset(&fctx, text_pos);
@@ -188,6 +183,22 @@ static void layer_update_proc(Layer *layer, GContext *ctx) {
 
     fctx_deinit_context(&fctx);
   }
+}
+
+static void inbox_received_handler(DictionaryIterator *iter, void *context) {
+  Tuple *bg_color_t = dict_find(iter, MESSAGE_KEY_BackgroundColor);
+  if (bg_color_t) {
+    s_bg_color = GColorFromHEX(bg_color_t->value->int32);
+    persist_write_int(MESSAGE_KEY_BackgroundColor, bg_color_t->value->int32);
+  }
+
+  Tuple *text_color_t = dict_find(iter, MESSAGE_KEY_TextColor);
+  if (text_color_t) {
+    s_text_color = GColorFromHEX(text_color_t->value->int32);
+    persist_write_int(MESSAGE_KEY_TextColor, text_color_t->value->int32);
+  }
+
+  layer_mark_dirty(s_canvas_layer);
 }
 
 // Initialize clock
@@ -239,6 +250,22 @@ static void main_window_load(Window *window) { Clock_init(window); }
 static void main_window_unload(Window *window) { Clock_deinit(); }
 
 static void init(void) {
+  // Load colors or set defaults
+  if (persist_exists(MESSAGE_KEY_BackgroundColor)) {
+    s_bg_color = GColorFromHEX(persist_read_int(MESSAGE_KEY_BackgroundColor));
+  } else {
+    s_bg_color = GColorBlack;
+  }
+
+  if (persist_exists(MESSAGE_KEY_TextColor)) {
+    s_text_color = GColorFromHEX(persist_read_int(MESSAGE_KEY_TextColor));
+  } else {
+    s_text_color = GColorWhite;
+  }
+
+  app_message_register_inbox_received(inbox_received_handler);
+  app_message_open(128, 128);
+
   s_main_window = window_create();
   window_set_window_handlers(
       s_main_window,

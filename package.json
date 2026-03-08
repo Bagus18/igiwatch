@@ -7,7 +7,8 @@
   ],
   "private": true,
   "dependencies": {
-    "pebble-fctx": "^1.6.4"
+    "pebble-fctx": "^1.6.4",
+    "pebble-clay": "^1.0.4"
   },
   "pebble": {
     "displayName": "igiwatch",
@@ -19,22 +20,22 @@
       "basalt",
       "chalk",
       "diorite",
-      "emery",
-      "flint"
+      "emery"
     ],
     "watchapp": {
       "watchface": true,
       "iconImage": "MENU_ICON"
     },
     "messageKeys": [
-      "dummy"
+      "BackgroundColor",
+      "TextColor"
     ],
     "resources": {
       "media": [
         {
           "type": "bitmap",
           "name": "MENU_ICON",
-          "file": "images/igitimer.png",
+          "file": "images/igiwatch.png",
           "menuIcon": true
         },
         {
@@ -52,5 +53,8 @@
   },
   "devDependencies": {
     "pebble-fctx-compiler": "^1.2.0"
+  },
+  "overrides": {
+    "xml2js": "^0.5.0"
   }
 }

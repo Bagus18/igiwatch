@@ -83,6 +83,7 @@ module.exports = [
           { "label": "French", "value": "fr_FR" },
           { "label": "German", "value": "de_DE" },
           { "label": "Spanish", "value": "es_ES" }
+          { "label": "Indonesian", "value": "id_ID" }
         ]
       }
     ]

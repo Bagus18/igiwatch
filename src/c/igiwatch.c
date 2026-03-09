@@ -85,7 +85,11 @@ static void update_time() {
   } else if (strncmp(s_date_locale, "es", 2) == 0) {
     days = DAYS_ES;
     months = MONTHS_ES;
+  } else if (strncmp(s_date_locale, "id", 2) == 0) {
+    days = DAYS_ID;
+    months = MONTHS_ID;
   }
+
 
   snprintf(s_full_date_str, sizeof(s_full_date_str), "%s %d %s", days[tick_time->tm_wday], tick_time->tm_mday, months[tick_time->tm_mon]);
 

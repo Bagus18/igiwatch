@@ -49,6 +49,10 @@ static const char* MONTHS_DE[] = {"Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Ju
 static const char* DAYS_ES[] = {"Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"};
 static const char* MONTHS_ES[] = {"Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"};
 
+static const char* DAYS_ID[] = {"Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"};
+static const char* MONTHS_ID[] = {"Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nop", "Des"};
+
+
 static void update_time() {
   time_t temp = time(NULL);
   struct tm *tick_time = localtime(&temp);
